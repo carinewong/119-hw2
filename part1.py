@@ -1,7 +1,7 @@
 
 print("HI")
 
-""
+"""
 Part 1: MapReduce
 
 In our first part, we will practice using MapReduce

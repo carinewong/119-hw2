@@ -1,0 +1,31 @@
+# import pyspark
+# from pyspark.sql import SparkSession
+# spark = SparkSession.builder.appName("SparkExample").getOrCreate()
+# sc = spark.sparkContext
+
+# # Chem names by atomic number
+# CHEM_NAMES = [None, "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne"]
+# CHEM_DATA = {
+#     # H20
+#     "water": [0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+#     # N2
+#     "nitrogen": [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
+#     # CO2
+#     "carbon dioxide": [0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0],
+#     # CH4
+#     "methane": [0, 4, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+#     # C8 H F15 O2
+#     "PFOA": [0, 1, 0, 0, 0, 0, 8, 0, 2, 15, 0],
+# }
+
+from pyspark import SparkContext
+
+sc = SparkContext("local", "RDD_example")
+
+# a simple python list
+data = [("a", 1), ("b", 2), ("a", 3), ("c", 4)]
+
+# create an RDD
+rdd = sc.parallelize(data)
+
+print(rdd.keys())
