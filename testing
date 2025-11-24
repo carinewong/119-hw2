@@ -18,14 +18,130 @@
 #     "PFOA": [0, 1, 0, 0, 0, 0, 8, 0, 2, 15, 0],
 # }
 
-from pyspark import SparkContext
+# from pyspark import SparkContext
 
-sc = SparkContext("local", "RDD_example")
+# sc = SparkContext("local", "RDD_example")
 
-# a simple python list
-data = [("a", 1), ("b", 2), ("a", 3), ("c", 4)]
+# # a simple python list
+# data = [("a", 1), ("b", 2), ("a", 3), ("c", 4)]
 
-# create an RDD
-rdd = sc.parallelize(data)
+# # create an RDD
+# rdd = sc.parallelize(data)
 
-print(rdd.keys())
+# print(rdd.distinct().collect())
+
+# def n_to_eng(n):
+#     """ Defines a recursive function that outputs the english spelling of a number"""
+#     #define basic spellings of indivs and multiples
+#     indivs = ["zero", "one", "two", "three", "four", "five", "six", "seven", 
+#     "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+#     "eighteen", "nineteen"]
+
+#     multiples = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+#     if n < 20:
+#         return indivs[n]
+#     if n < 100:
+#         tens = n // 10
+#         ones = n % 10 
+#         if ones != 0:
+#             result = (multiples[tens-2] + " " + indivs[ones])
+#             return result
+#         else:
+#             result = multiples[tens-2]
+#             return result
+    
+#     if n < 1000:
+#         hundreds = n // 100
+#         if (n % 100) == 0:
+#             return (indivs[hundreds] + " hundred")
+#         else:
+#             return (indivs[hundreds] + " hundred and " + n_to_eng(n % 100))
+    
+#     if n < 1000000:
+#         thousands = n // 1000
+#         remainder = n % 1000
+#         if (n % 1000) == 0:
+#             return (n_to_eng(thousands) + " thousand")
+#         else:
+#             return (n_to_eng(thousands) + " thousand" + (" " if remainder >= 100 else " and ") + n_to_eng(remainder))
+
+#     #if n == 1000000:
+#     #    return ("one million")
+
+#     if n < 100000000:
+#         millions = n//100000000
+#         remainder = n%100000000
+#         if remainder == 0:
+#             return (n_to_eng(millions) + " million")
+#         else:
+#             return n_to_eng(millions) + " million" + (" " if remainder >= 1000 else " and ") + n_to_eng(remainder)
+    
+#     if n == 100000000:
+#         return "one hundred million"
+
+# Examples:
+
+#     0 = zero
+#     71 = seventy one
+#     513 = five hundred and thirteen
+#     801 = eight hundred and one
+#     999 = nine hundred and ninety nine
+#     1001 = one thousand one
+#     500,501 = five hundred thousand five hundred and one
+#     555,555 = five hundred and fifty five thousand five hundred and fifty five
+#     1,000,000 = one million
+
+
+def n_to_eng(n):
+    """ Defines a function that outputs the english spelling of a number"""
+    #define basic spellings of indivs and multiples
+    indivs = ["zero", "one", "two", "three", "four", "five", "six", "seven", 
+    "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+    "eighteen", "nineteen"]
+
+    multiples = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+    if n == 0:
+        return "zero"
+
+    answer = []
+
+    if n >= 1000000:
+        millions = n // 1000000
+        answer.append(n_to_eng(millions) + " million")
+        n %= 1000000
+        if n > 0 and n < 1000:
+            answer.append("and")
+    if n >= 1000:
+        thousands = n//1000
+        answer.append(n_to_eng(thousands) + " thousand")
+        n %= 1000
+        # if n > 0 and n < 100:
+        #     answer.append("")
+    if n >= 100:
+        hundreds = n//100
+        answer.append(indivs[hundreds] + " hundred")
+        n%=100
+        if n>0:
+            answer.append('and')
+    if n>=20:
+        tens = n//10
+        n%=10
+        answer.append(multiples[tens-2])
+        if n>0:
+            answer.append(indivs[n])
+    elif n >0:
+        answer.append(indivs[n])
+    return " ".join(answer)
+
+print(n_to_eng(0))
+print(n_to_eng(71))
+print(n_to_eng(513))
+print(n_to_eng(801))
+print(n_to_eng(999))
+print(n_to_eng(1001))
+print(n_to_eng(1881))
+print(n_to_eng(500501))
+print(n_to_eng(555555))
+print(n_to_eng(1000000))

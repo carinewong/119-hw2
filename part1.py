@@ -1,6 +1,3 @@
-
-print("HI")
-
 """
 Part 1: MapReduce
 
@@ -71,12 +68,11 @@ def general_map(rdd, f):
     f: a function (k1, v1) -> List[(k2, v2)]
     output: an RDD with values of type (k2, v2)
     """
-    # TODO
-    raise NotImplementedError
-    # ^^^^ remove TODO and raise NotImplementedError when implemented :)
+    return rdd.flatMap(lambda val: f(val[0], val[1]))
 
 # Remove skip when implemented!
-@pytest.mark.skip
+#@pytest.mark.skip
+
 def test_general_map():
     rdd = sc.parallelize(["cat", "dog", "cow", "zebra"])
 
@@ -120,11 +116,11 @@ def general_reduce(rdd, f):
     output: an RDD with values of type (k2, v2),
         and just one single value per key
     """
-    # TODO
-    raise NotImplementedError
+    return rdd.reduceByKey(lambda val1, val2: f(val1, val2))
 
 # Remove skip when implemented!
-@pytest.mark.skip
+#@pytest.mark.skip
+
 def test_general_reduce():
     rdd = sc.parallelize(["cat", "dog", "cow", "zebra"])
 
@@ -158,7 +154,15 @@ def q2():
 and keys for Reduce be different might be useful.
 
 === ANSWER Q3 BELOW ===
+You're hosting the Turkey Trot in Davis and have the runtimes (and their times at each running checkpoint) 
+for all of the participating runners. There are 5 checkpoints (one per KM) around the race
+route and want to see the minimum amount of time it takes to get to each checkpoint of those that ran.
+At the map step, you might be mapping the data from some key-value situation (runner: (checkpoint1:time, ... , checkpoint5:time)
+to just be (checkpoint1:time, ... , checkpoint5:time).
+At the reduce step, maybe you'll be finding f: for person 1's (check1point1:time_to_reach, ... , checkpoint5:time_to_reach), person 2's (check1point1:time_to_reach, ... , checkpoint5:time_to_reach), 
+return max(check1point1:time_to_reach, ... , checkpoint5:time_to_reach),
 
+At the map step, our key was the person's PID, but at the reduce step, it's the checkpoints.
 === END OF Q3 ANSWER ===
 """
 
@@ -176,20 +180,20 @@ set of integers between 1 and 1 million (inclusive).
 def load_input():
     # Return a parallelized RDD with the integers between 1 and 1,000,000
     # This will be referred to in the following questions.
-    # TODO
-    raise NotImplementedError
+    return sc.parallelize(range(1, 1000001))
 
 def q4(rdd):
     # Input: the RDD from load_input
     # Output: the length of the dataset.
     # You may use general_map or general_reduce here if you like (but you don't have to) to get the total count.
-    # TODO
-    raise NotImplementedError
+    return rdd.count()
 
 """
 Now use the general_map and general_reduce functions to answer the following questions.
 
-For Q5-Q7, your answers should use general_map and general_reduce as much as possible (wherever possible): you will still need a single .map call at the beginning (to convert the RDD into key, value pairs), but after that point, you should only use general_map and general_reduce.
+For Q5-Q7, your answers should use general_map and general_reduce as much as possible 
+(wherever possible): you will still need a single .map call at the beginning 
+(to convert the RDD into key, value pairs), but after that point, you should only use general_map and general_reduce.
 
 5. Among the numbers from 1 to 1 million, what is the average value?
 """
@@ -197,8 +201,19 @@ For Q5-Q7, your answers should use general_map and general_reduce as much as pos
 def q5(rdd):
     # Input: the RDD from Q4
     # Output: the average value
-    # TODO
-    raise NotImplementedError
+
+    #first map
+    maptopairs = rdd.map(lambda x: (0, (x, 1))) #convert to key:value pairs
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+
+    #then reduce
+    reduce = general_reduce(general_maptopairs, lambda x, y: (x[0] + y[0], x[1] + y[1]))
+
+    #.collect() to finally find the average value
+    totalsum, totalcount = reduce.collect()[0][1]
+    avg_val = totalsum/totalcount
+
+    return avg_val
 
 """
 6. Among the numbers from 1 to 1 million, when written out,
@@ -216,8 +231,20 @@ Your answer should use the general_map and general_reduce functions as much as p
 def q6(rdd):
     # Input: the RDD from Q4
     # Output: a tuple (most common digit, most common frequency, least common digit, least common frequency)
-    # TODO
-    raise NotImplementedError
+    
+    #first map
+    maptopairs = rdd.map(lambda x: (x, None))
+    digit_maptopairs = general_map(maptopairs, lambda key, value: [(digit, 1) for digit in str(key)]) #convert each number into many pairs (1 for every digit)
+
+    #now reduce =(^0v0^)=
+    countdigits = general_reduce(digit_maptopairs, lambda x, y: x+y)
+
+    #.collect() to now actually do the action
+    output = countdigits.collect()
+    least_common_digit, least_freq  = min(output, key=lambda x: x[1])
+    most_common_digit, most_freq  = max(output, key=lambda x: x[1])
+
+    return (most_common_digit, most_freq, least_common_digit, least_freq)
 
 """
 7. Among the numbers from 1 to 1 million, written out in English, which letter is most common?
@@ -257,11 +284,65 @@ Notes:
 
 # *** Define helper function(s) here ***
 
+def n_to_eng(n):
+    """ Defines a function that outputs the english spelling of a number"""
+    #define basic spellings of indivs and multiples
+    indivs = ["zero", "one", "two", "three", "four", "five", "six", "seven", 
+    "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+    "eighteen", "nineteen"]
+
+    multiples = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+    if n == 0:
+        return "zero"
+
+    answer = []
+
+    if n >= 1000000:
+        millions = n // 1000000
+        answer.append(n_to_eng(millions) + " million")
+        n %= 1000000
+        if n > 0 and n < 1000:
+            answer.append("and")
+    if n >= 1000:
+        thousands = n//1000
+        answer.append(n_to_eng(thousands) + " thousand")
+        n %= 1000
+        # if n > 0 and n < 100:
+        #     answer.append("")
+    if n >= 100:
+        hundreds = n//100
+        answer.append(indivs[hundreds] + " hundred")
+        n%=100
+        if n>0:
+            answer.append('and')
+    if n>=20:
+        tens = n//10
+        n%=10
+        answer.append(multiples[tens-2])
+        if n>0:
+            answer.append(indivs[n])
+    elif n >0:
+        answer.append(indivs[n])
+    return " ".join(answer)
+
 def q7(rdd):
     # Input: the RDD from Q4
     # Output: a tulpe (most common char, most common frequency, least common char, least common frequency)
-    # TODO
-    raise NotImplementedError
+    
+    #first map
+    maptopairs = rdd.map(lambda x: (x, None))
+    letter_pairs = general_map(maptopairs, lambda key, value: [(c, 1) for c in n_to_eng(key) if c.isalpha()]) #map each letter to a key/value pair now
+
+    #reduce
+    count_letters = general_reduce(letter_pairs, lambda x, y: x+y)
+
+    #now execute the action
+    output = count_letters.collect()
+    least_common_letter, least_freq = min(output, key = lambda x: x[1])
+    most_common_letter, most_freq = max(output, key = lambda x: x[1])
+
+    return(most_common_letter, most_freq, least_common_letter, least_freq)
 
 """
 8. Does the answer change if we have the numbers from 1 to 100,000,000?
@@ -282,24 +363,23 @@ Notes:
 """
 
 def load_input_bigger():
-    # TODO
-    raise NotImplementedError
+    return sc.parallelize(range(1, 10000001), 100) #100 partitions
 
 def q8_a():
     # version of Q6
     # It should call into q6() with the new RDD!
     # Don't re-implemented the q6 logic.
     # Output: a tuple (most common digit, most common frequency, least common digit, least common frequency)
-    # TODO
-    raise NotImplementedError
+    rdd = load_input_bigger()
+    return q6(rdd)
 
 def q8_b():
     # version of Q7
     # It should call into q7() with the new RDD!
     # Don't re-implemented the q6 logic.
     # Output: a tulpe (most common char, most common frequency, least common char, least common frequency)
-    # TODO
-    raise NotImplementedError
+    rdd = load_input_bigger()
+    return q7(rdd)
 
 """
 Discussion questions
@@ -307,14 +387,19 @@ Discussion questions
 9. State what types you used for k1, v1, k2, and v2 for your Q6 and Q7 pipelines.
 
 === ANSWER Q9 BELOW ===
-
+k1: integer (the original number from the RDD)
+v1: None (didn't need it for anything)
+k2: string (digits for Q6) and string (letters for Q7)
+v2: integer (count of frequencies)
 === END OF Q9 ANSWER ===
 
 10. Do you think it would be possible to compute the above using only the
 "simplified" MapReduce we saw in class? Why or why not?
 
 === ANSWER Q10 BELOW ===
-
+I don't think so. Our "simplified" MapReduce we saw in class is essentially the same thing 
+but without doing things "Per Key." But we used keys (k2) to keep track of what letters or digits we have 
+summed up so far. The simplified version would just count them all into 1 aggregate number, rather than by letter or by digit.
 === END OF Q10 ANSWER ===
 """
 
@@ -336,8 +421,15 @@ your answer should return a Python set of (key, value) pairs after the reduce st
 def q11(rdd):
     # Input: the RDD from Q4
     # Output: the result of the pipeline, a set of (key, value) pairs
-    # TODO
-    raise NotImplementedError
+
+    #map
+    maptopairs = rdd.map(lambda x: (x, None))
+    general_mapped = general_map(maptopairs, lambda key, value: [])
+
+    #reduce
+    reduced = general_reduce(general_mapped, lambda x, y: x+y)
+
+    return set(reduced.collect())
 
 """
 12. What happened? Explain below.
@@ -345,7 +437,9 @@ Does this depend on anything specific about how
 we chose to define general_reduce?
 
 === ANSWER Q12 BELOW ===
-
+Our output was just set(). This showcases the edge case in which there's no output
+for the reduce stage. When there's no key value pairs in the input, our general_reduce()
+produced an empty RDD. This is specifically because I defined general_reduce by using reduceByKeys rather than just the reduce() function
 === END OF Q12 ANSWER ===
 
 13. Lastly, we will explore a second edge case, where the reduce stage can
