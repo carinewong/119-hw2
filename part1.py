@@ -191,7 +191,16 @@ def q4(rdd):
     # Input: the RDD from load_input
     # Output: the length of the dataset.
     # You may use general_map or general_reduce here if you like (but you don't have to) to get the total count.
-    return rdd.count()
+    
+    #first map
+    maptopairs = rdd.map(lambda x: ("count", 1))
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+    
+    #then reduce
+    reduced = general_reduce(general_maptopairs, lambda x, y: x+y)
+
+    output = reduced.collect()
+    return result[0][1] 
 
 """
 Now use the general_map and general_reduce functions to answer the following questions.
