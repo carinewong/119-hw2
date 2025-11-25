@@ -200,7 +200,7 @@ def q4(rdd):
     reduced = general_reduce(general_maptopairs, lambda x, y: x+y)
 
     output = reduced.collect()
-    return result[0][1] 
+    return output[0][1] 
 
 """
 Now use the general_map and general_reduce functions to answer the following questions.
