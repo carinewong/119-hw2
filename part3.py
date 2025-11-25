@@ -47,10 +47,42 @@ You should not modify the existing PART_1_PIPELINE.
 
 You may either delete the parts of the code that save the output file, or change these to a different output file like part1-answers-temp.txt.
 """
+import part1
+from pyspark.sql import SparkSession
+from pyspark import SparkContext, SparkConf
+from pyspark.sql.utils import IllegalArgumentException
+import pyspark
+
+try:
+    # This should run on the driver (python3 part1.py, pytest, python3 part3.py)
+    spark = SparkSession.builder.appName("DataflowGraphExample").getOrCreate()
+    sc = spark.sparkContext
+except PySparkRuntimeError:
+    # This path happens on workers when they import part1.
+    # We don’t want to create a SparkContext here.
+    spark = None
+    sc = None
+
+ANSWER_FILE = "output/part1-answers-tmp.txt"
+UNFINISHED = 0
+
+def log_answer(name, func, *args):
+    try:
+        answer = func(*args)
+        print(f"{name} answer: {answer}")
+        with open(ANSWER_FILE, 'a') as f:
+            f.write(f'{name},{answer}\n')
+            print(f"Answer saved to {ANSWER_FILE}")
+    except NotImplementedError:
+        print(f"Warning: {name} not implemented.")
+        with open(ANSWER_FILE, 'a') as f:
+            f.write(f'{name},Not Implemented\n')
+        global UNFINISHED
+        UNFINISHED += 1
 
 def PART_1_PIPELINE_PARAMETRIC(N, P):
     """
-    TODO: Follow the same logic as PART_1_PIPELINE
+    Follow the same logic as PART_1_PIPELINE
     N = number of inputs
     P = parallelism (number of partitions)
     (You can copy the code here), but make the following changes:
@@ -58,7 +90,50 @@ def PART_1_PIPELINE_PARAMETRIC(N, P):
     - load_input_bigger (including q8_a and q8_b) should use an input of size N.
     - both of these should return an RDD with level of parallelism P (number of partitions = P).
     """
-    raise NotImplementedError
+    open(ANSWER_FILE, 'w').close()
+
+    try:
+        dfs = part1.load_input()
+    except NotImplementedError:
+        print("Welcome to Part 1! Implement load_input() to get started.")
+        dfs = sc.parallelize([])
+
+    # Questions 1-3
+    log_answer("q1", part1.q1)
+    log_answer("q2", part1.q2)
+    # 3: commentary
+
+    # Questions 4-10
+    log_answer("q4", part1.q4, dfs)
+    log_answer("q5", part1.q5, dfs)
+    log_answer("q6", part1.q6, dfs)
+    log_answer("q7", part1.q7, dfs)
+    log_answer("q8a", part1.q8_a, N, P)
+    log_answer("q8b", part1.q8_b, N, P)
+    # 9: commentary
+    # 10: commentary
+
+    # Questions 11-18
+    log_answer("q11", part1.q11, dfs)
+    # 12: commentary
+    # 13: commentary
+    log_answer("q14", part1.q14, dfs)
+    # 15: commentary
+    log_answer("q16a", part1.q16_a)
+    log_answer("q16b", part1.q16_b)
+    log_answer("q16c", part1.q16_c)
+    # 17: commentary
+    # 18: commentary
+
+    # Questions 19-20
+    # 19: commentary
+    log_answer("q20", part1.q20)
+
+    # Answer: return the number of questions that are not implemented
+    if UNFINISHED > 0:
+        print("Warning: there are unfinished questions.")
+
+    return f"{UNFINISHED} unfinished questions"
 
 """
 === Coding part 2: measuring the throughput and latency ===
@@ -113,10 +188,136 @@ That is why we are assuming the latency will just be the running time of the ent
 
 - Please set `NUM_RUNS` to `1` if you haven't already. Note that this will make the values for low numbers (like `N=1`, `N=10`, and `N=100`) vary quite unpredictably.
 """
+import time
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
 # Copy in ThroughputHelper and LatencyHelper
+class ThroughputHelper:
+    def __init__(self):
+        # Initialize the object.
+        # Pipelines: a list of functions, where each function
+        # can be run on no arguments.
+        # (like: def f(): ... )
+        self.pipelines = []
 
-# Insert code to generate plots here as needed
+        # Pipeline names
+        # A list of names for each pipeline
+        self.names = []
+
+        # Pipeline input sizes
+        self.sizes = []
+
+        # Pipeline throughputs
+        # This is set to None, but will be set to a list after throughputs
+        # are calculated.
+        self.throughputs = None
+
+    def add_pipeline(self, name, size, func):
+        self.names.append(name)
+        self.sizes.append(size)
+        self.pipelines.append(func)
+
+    def compare_throughput(self):
+        # Measure the throughput of all pipelines
+        # and store it in a list in self.throughputs.
+        # Make sure to use the NUM_RUNS variable.
+        # Also, return the resulting list of throughputs,
+        # in **number of items per second.**
+        
+        #formula: N / (T / NUM_RUNS) where N = number of input items, T is total time
+        NUM_RUNS = 1
+        all_throughputs = []
+        for name, size, func in zip(self.names, self.sizes, self.pipelines):
+            start_time = time.perf_counter()
+            for i in range(NUM_RUNS):
+                func()
+            end_time = time.perf_counter()
+            T = end_time - start_time
+            denom = T / NUM_RUNS
+            if denom > 0:
+                this_throughput = size / denom
+            elif denom == 0:
+                this_throughput = 0
+            all_throughputs.append(this_throughput)
+        self.throughputs = all_throughputs
+        return all_throughputs
+
+    def generate_plot(self, filename):
+        # Generate a plot for throughput using matplotlib.
+        # You can use any plot you like, but a bar chart probably makes
+        # the most sense.
+        # Make sure you include a legend.
+        # Save the result in the filename provided.
+        plt.figure()
+        plt.bar(self.names, self.throughputs)
+        plt.xticks(rotation=45)
+        plt.title("Comparing Throughput for our Pipelines")
+        plt.xlabel("Pipeline Type")
+        plt.ylabel("Throughput (items / second)")
+        plt.xticks(rotation = 45, fontsize=6)
+        plt.tight_layout()
+        plt.savefig(filename)
+
+class LatencyHelper:
+    def __init__(self):
+        # Initialize the object.
+        # Pipelines: a list of functions, where each function
+        # can be run on no arguments.
+        # (like: def f(): ... )
+        self.pipelines = []
+
+        # Pipeline names
+        # A list of names for each pipeline
+        self.names = []
+
+        # Pipeline latencies
+        # This is set to None, but will be set to a list after latencies
+        # are calculated.
+        self.latencies = None
+
+    def add_pipeline(self, name, func):
+        self.names.append(name)
+        self.pipelines.append(func)
+
+    def compare_latency(self):
+        # Measure the latency of all pipelines
+        # and store it in a list in self.latencies.
+        # Also, return the resulting list of latencies,
+        # in **milliseconds.**
+        all_latency = []
+        NUM_RUNS = 1
+        for name, pipeline in zip(self.names, self.pipelines):
+            start_time = time.perf_counter()
+            for run in range(NUM_RUNS):
+                pipeline()
+            end_time = time.perf_counter()
+
+            this_latency_ms = ((end_time - start_time) * 1000 ) / NUM_RUNS 
+            this_latency_ms = f"{this_latency_ms:.6f}"
+            all_latency.append(this_latency_ms)
+        self.latencies = all_latency
+        return all_latency
+
+
+    def generate_plot(self, filename):
+        # Generate a plot for latency using matplotlib.
+        # You can use any plot you like, but a bar chart probably makes
+        # the most sense.
+        # Make sure you include a legend.
+        # Save the result in the filename provided.
+        latencies = [float(x) for x in self.latencies]
+        plt.figure()
+        plt.bar(self.names, latencies)
+        plt.xticks(rotation = 45)
+        plt.title("Comparison of Latency for Pipelines")
+        plt.xlabel("Pipeline Type")
+        plt.ylabel("Latency (in milliseconds)")
+        plt.yticks(fontsize=6)
+        plt.tight_layout()
+        plt.savefig(filename)
+        plt.close()
 
 """
 === Reflection part ===
@@ -176,7 +377,29 @@ Running python3 part3.py should work and should re-generate all of your plots in
 """
 
 if __name__ == '__main__':
+    spark = SparkSession.builder.appName("DataflowGraphExample").getOrCreate()
+    sc = spark.sparkContext
     print("Complete part 3. Please use the main function below to generate your plots so that they are regenerated whenever the code is run:")
 
-    print("[add code here]")
-    # TODO: add code here
+    P_vals = [1, 2, 4, 8, 16]
+    N_vals = [1, 10, 100, 1000, 10000, 100000, 1000000]
+
+    for P in P_vals:
+        Throughput = ThroughputHelper()
+        Latency = LatencyHelper() 
+        
+        def pipeline_helper(N, P):
+            def pipeline_function():
+                PART_1_PIPELINE_PARAMETRIC(N, P)
+            return pipeline_function
+            
+        for N in N_vals:
+            Throughput.add_pipeline(f"P={P}, N = {N}", 2*N, pipeline_helper(N, P))
+            Latency.add_pipeline(f"P={P}, N={N}", pipeline_helper(N, P))
+        
+        #measure and save plots
+        throughput_results = Throughput.compare_throughput()
+        latency_results = Latency.compare_latency()
+        Throughput.generate_plot(f"output/part3-throughput-{P}.png")
+        Latency.generate_plot(f"output/part3-latency-{P}.png")
+        

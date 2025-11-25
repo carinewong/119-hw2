@@ -26,6 +26,7 @@ If you aren't sure of the type of the output, please post a question on Piazza.
 """
 
 # Spark boilerplate (remember to always add this at the top of any Spark file)
+import random
 import pyspark
 from pyspark.sql import SparkSession
 spark = SparkSession.builder.appName("DataflowGraphExample").getOrCreate()
@@ -177,10 +178,14 @@ set of integers between 1 and 1 million (inclusive).
 4. First, we need a function that loads the input.
 """
 
-def load_input():
+def load_input(N=None, P=None):
     # Return a parallelized RDD with the integers between 1 and 1,000,000
     # This will be referred to in the following questions.
-    return sc.parallelize(range(1, 1000001))
+    if N is None:
+        N = 1000000
+    if P is None:
+        P = sc.defaultParallelism
+    return sc.parallelize(range(1, N+1), P)
 
 def q4(rdd):
     # Input: the RDD from load_input
@@ -284,52 +289,52 @@ Notes:
 
 # *** Define helper function(s) here ***
 
-def n_to_eng(n):
-    """ Defines a function that outputs the english spelling of a number"""
-    #define basic spellings of indivs and multiples
-    indivs = ["zero", "one", "two", "three", "four", "five", "six", "seven", 
-    "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-    "eighteen", "nineteen"]
 
-    multiples = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
-
-    if n == 0:
-        return "zero"
-
-    answer = []
-
-    if n >= 1000000:
-        millions = n // 1000000
-        answer.append(n_to_eng(millions) + " million")
-        n %= 1000000
-        if n > 0 and n < 1000:
-            answer.append("and")
-    if n >= 1000:
-        thousands = n//1000
-        answer.append(n_to_eng(thousands) + " thousand")
-        n %= 1000
-        # if n > 0 and n < 100:
-        #     answer.append("")
-    if n >= 100:
-        hundreds = n//100
-        answer.append(indivs[hundreds] + " hundred")
-        n%=100
-        if n>0:
-            answer.append('and')
-    if n>=20:
-        tens = n//10
-        n%=10
-        answer.append(multiples[tens-2])
-        if n>0:
-            answer.append(indivs[n])
-    elif n >0:
-        answer.append(indivs[n])
-    return " ".join(answer)
 
 def q7(rdd):
     # Input: the RDD from Q4
     # Output: a tulpe (most common char, most common frequency, least common char, least common frequency)
-    
+    def n_to_eng(n):
+        """ Defines a function that outputs the english spelling of a number"""
+        #define basic spellings of indivs and multiples
+        indivs = ["zero", "one", "two", "three", "four", "five", "six", "seven", 
+        "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+        "eighteen", "nineteen"]
+
+        multiples = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+        if n == 0:
+            return "zero"
+
+        answer = []
+
+        if n >= 1000000:
+            millions = n // 1000000
+            answer.append(n_to_eng(millions) + " million")
+            n %= 1000000
+            if n > 0 and n < 1000:
+                answer.append("and")
+        if n >= 1000:
+            thousands = n//1000
+            answer.append(n_to_eng(thousands) + " thousand")
+            n %= 1000
+            # if n > 0 and n < 100:
+            #     answer.append("")
+        if n >= 100:
+            hundreds = n//100
+            answer.append(indivs[hundreds] + " hundred")
+            n%=100
+            if n>0:
+                answer.append('and')
+        if n>=20:
+            tens = n//10
+            n%=10
+            answer.append(multiples[tens-2])
+            if n>0:
+                answer.append(indivs[n])
+        elif n >0:
+            answer.append(indivs[n])
+        return " ".join(answer)
     #first map
     maptopairs = rdd.map(lambda x: (x, None))
     letter_pairs = general_map(maptopairs, lambda key, value: [(c, 1) for c in n_to_eng(key) if c.isalpha()]) #map each letter to a key/value pair now
@@ -362,23 +367,27 @@ Notes:
   helped speed it up.
 """
 
-def load_input_bigger():
-    return sc.parallelize(range(1, 10000001), 100) #100 partitions
+def load_input_bigger(N=None, P=None):
+    if N is None:
+        N = 10000000
+    if P is None:
+        P = 100 #seems to work for other students
+    return sc.parallelize(range(1, N+1), P)
 
-def q8_a():
+def q8_a(N=None, P=None):
     # version of Q6
     # It should call into q6() with the new RDD!
     # Don't re-implemented the q6 logic.
     # Output: a tuple (most common digit, most common frequency, least common digit, least common frequency)
-    rdd = load_input_bigger()
+    rdd = load_input_bigger(N, P)
     return q6(rdd)
 
-def q8_b():
+def q8_b(N=None, P=None):
     # version of Q7
     # It should call into q7() with the new RDD!
     # Don't re-implemented the q6 logic.
     # Output: a tulpe (most common char, most common frequency, least common char, least common frequency)
-    rdd = load_input_bigger()
+    rdd = load_input_bigger(N, P)
     return q7(rdd)
 
 """
@@ -452,7 +461,11 @@ Why do you imagine it could be the case that the output of the reduce stage
 is different depending on the order of the input?
 
 === ANSWER Q13 BELOW ===
-
+In our case, our reduce functions are all addition, which is unaffected by order since we are
+just adding up frequencies of things. However, if we were subtracting or doing some other operations that are affected
+by ordering, we'd have an issue in this case and have mismatched outputs depending on the order, even if the
+same thing is done twice. According to the paper linked in Q19, noncommutative functions would result in nondeterministic behavior depending
+on things like partitioning.
 === END OF Q13 ANSWER ===
 
 14.
@@ -466,8 +479,17 @@ Important: Please create an example where the output of the reduce stage is a se
 def q14(rdd):
     # Input: the RDD from Q4
     # Output: the result of the pipeline, a set of (key, value) pairs
-    # TODO
-    raise NotImplementedError
+    
+    #map
+    maptopairs = rdd.map(lambda x: (1, x))
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+    
+    #reduce
+    reduced = general_reduce(general_maptopairs, lambda x, y: x-y)
+
+    return set(reduced.collect())
+
+
 
 """
 15.
@@ -477,7 +499,12 @@ Does it exhibit nondeterministic behavior on different runs?
 including partitioning.
 
 === ANSWER Q15 BELOW ===
+q14 answer: {(1, 249999000000)} 
+q14 answer: {(1, 249999000000)}
+q14 answer: {(1, 249999000000)}
 
+I ran the code 3 times and got the above answers. It looks like that my Spark scheduler and implementation doesn't exhibit nondeterministic behavior
+on different runs (albeit that my sample size is not large enough at 3.)
 === END OF Q15 ANSWER ===
 
 16.
@@ -489,18 +516,52 @@ Write three functions, a, b, and c that use different levels of parallelism.
 
 def q16_a():
     # For this one, create the RDD yourself. Choose the number of partitions.
-    # TODO
-    raise NotImplementedError
+    
+    #make some random numbers
+    random.seed(3)
+    values = [random.randint(1, 1000) for i in range(1000)]
+    my_rdd = sc.parallelize(values, 100)
+
+    #map
+    maptopairs = my_rdd.map(lambda x: (1, x))
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+
+    #reduce
+    reduced = general_reduce(general_maptopairs, lambda x, y: x-y)
+
+    return set(reduced.collect())
 
 def q16_b():
     # For this one, create the RDD yourself. Choose the number of partitions.
-    # TODO
-    raise NotImplementedError
+    #make some random numbers
+    random.seed(3)
+    values = [random.randint(1, 1000) for i in range(1000)]
+    my_rdd = sc.parallelize(values, 2)
+
+    #map
+    maptopairs = my_rdd.map(lambda x: (1, x))
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+
+    #reduce
+    reduced = general_reduce(general_maptopairs, lambda x, y: x-y)
+
+    return set(reduced.collect())
 
 def q16_c():
     # For this one, create the RDD yourself. Choose the number of partitions.
-    # TODO
-    raise NotImplementedError
+    #make some random numbers
+    random.seed(3)
+    values = [random.randint(1, 1000) for i in range(1000)]
+    my_rdd = sc.parallelize(values, 10)
+
+    #map
+    maptopairs = my_rdd.map(lambda x: (1, x))
+    general_maptopairs = general_map(maptopairs, lambda key, value: [(key, value)])
+
+    #reduce
+    reduced = general_reduce(general_maptopairs, lambda x, y: x-y)
+
+    return set(reduced.collect())
 
 """
 Discussion questions
@@ -508,14 +569,22 @@ Discussion questions
 17. Was the answer different for the different levels of parallelism?
 
 === ANSWER Q17 BELOW ===
+q16a answer: {(1, 394298)} (number of partitions: 100)
+q16b answer: {(1, 2006)} (number of partitions: 2)
+q16c answer: {(1, 392772)} (number of partitions: 10)
 
+Yes, with different partitions, the answer is different for Q16ABC. This properly illustrates the issue with nondeterminism for commutativity.
 === END OF Q17 ANSWER ===
 
 18. Do you think this would be a serious problem if this occured on a real-world pipeline?
 Explain why or why not.
 
 === ANSWER Q18 BELOW ===
-
+Yes, this would be an issue in real-world pipelines. If I'm trying to count backwards or do multiple operations on the data that might
+have an ordering issue, I get different answers the different times I run it. An example might be trying to do division multiple times on a data set, like 
+doing various functions like dividing by number of households and number of people per household can result in nondeterminism. This may be hard 
+to catch as a bug because if I run it on my machine with n partitions, perhaps the configuration doesn't give me different values every time and I as the developer
+never notice the bug. But if I send this code to my manager with a bigger computer and more cores, this would possibly give a different number.
 === END OF Q18 ANSWER ===
 
 ===== Q19-20: Further reading =====
@@ -528,7 +597,13 @@ https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/icsecomp14se
 Take a look at the paper. What is one sentence you found interesting?
 
 === ANSWER Q19 BELOW ===
-
+"Our study justifies the pervasiveness of non-commutativity among
+user-defined reducers and shows that flagging all non-commutative
+reducers as bugs by only analyzing code would create too many false
+positives because most of them are actually harmless." (Xiao et. al.)
+I found the above sentence interesting because while a huge proportion of user-defined reducers has
+issues with nondeterminism, it's not necessarily needed to flag these hard-to-detect issues in code. 
+I assumed these frequently cause issues down the line in the pipeline, but it's rather not true.
 === END OF Q19 ANSWER ===
 
 20.
@@ -539,8 +614,40 @@ it possible to implement the example, and "False" if it was not.
 """
 
 def q20():
-    # TODO
-    raise NotImplementedError
+    """Showcasing bug 5: misplacing of a brace
+    My runs show:
+    - q20 answer: {(1, ('Special_ANS', 58))}
+    - q20 answer: {(1, ('Special_ANS', 58))}
+    """
+    def misbrace_map(key, row): #helper function that illustrates the misplacement of brace
+        if row["type"] == "Impression":
+            return [(key, ("Impression", row["value"]))]
+        elif row["type"] == "Special":
+            return[(key, ("Special_ANS", row["value"]))] #output for special is done inside of the loop
+        else:
+            return []
+    def misbrace_reduce(val1, val2):
+        if val1[0] == "Special_ANS":
+            return val1
+        if val2[0] == "Special_ANS":
+            return val2 
+        return ("Impression", val1[1], val2[1])
+
+    #parallelize
+    rdd = sc.parallelize([
+        (1, {"type":"Special", "value": 58}),
+        (1, {"type":"Impression", "value": 20}),
+        (1, {"type":"Impression", "value":8}),
+    ], 
+    2) #number of partitions
+
+    #map 
+    mapping = general_map(rdd, misbrace_map)
+    #reduce
+    reduced = general_reduce(mapping, misbrace_reduce)
+
+    #return
+    return set(reduced.collect())
 
 """
 That's it for Part 1!

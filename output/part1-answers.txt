@@ -7,9 +7,9 @@ q7,('n', 7141002, 'm', 1)
 q8a,('1', 7000001, '0', 5888896)
 q8b,('n', 84418993, 'w', 7000000)
 q11,set()
-q14,Not Implemented
-q16a,Not Implemented
-q16b,Not Implemented
-q16c,Not Implemented
-q20,Not Implemented
-PART 1,5 unfinished questions
+q14,{(1, 249999000000)}
+q16a,{(1, 394298)}
+q16b,{(1, 2006)}
+q16c,{(1, 392772)}
+q20,{(1, ('Special_ANS', 58))}
+PART 1,0 unfinished questions
