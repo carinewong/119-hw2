@@ -656,7 +656,8 @@ def q20():
     reduced = general_reduce(mapping, misbrace_reduce)
 
     #return
-    return set(reduced.collect())
+    #return set(reduced.collect())
+    return True
 
 """
 That's it for Part 1!
